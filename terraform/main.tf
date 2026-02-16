@@ -82,7 +82,7 @@ resource "azurerm_lb_rule" "main" {
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.main.id]
   probe_id                       = azurerm_lb_probe.main.id
   idle_timeout_in_minutes        = 4
-  enable_tcp_reset              = true
+  tcp_reset_enabled              = true
 }
 
 # Create Network Security Group and rule
