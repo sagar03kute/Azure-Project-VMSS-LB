@@ -106,7 +106,7 @@ variable "admin_username" {
 }
 
 variable "ssh_public_key" {
-  description = "SSH public key for the VMs"
+  description = "SSH public key for the VMs (leave empty to use ~/.ssh/id_rsa.pub)"
   type        = string
   default     = ""
 }
