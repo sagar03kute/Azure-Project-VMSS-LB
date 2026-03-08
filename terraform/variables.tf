@@ -8,7 +8,7 @@ variable "resource_group_name" {
 variable "location" {
   description = "Azure region for resources"
   type        = string
-  default     = "East US"
+  default     = "Central India"
 }
 
 # Virtual Network Variables
@@ -90,7 +90,7 @@ variable "vmss_name" {
 variable "vm_sku" {
   description = "Size of the virtual machines"
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_D2s_v3"
 }
 
 variable "instance_count" {
