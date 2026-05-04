@@ -177,3 +177,122 @@ resource "azurerm_linux_virtual_machine_scale_set" "main" {
 
   tags = var.tags
 }
+
+# Create Log Analytics Workspace for monitoring
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "${var.resource_group_name}-law"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+
+  tags = var.tags
+}
+
+# Create Diagnostic Settings for Load Balancer
+resource "azurerm_monitor_diagnostic_setting" "lb" {
+  name                       = "${var.load_balancer_name}-diagnostics"
+  target_resource_id         = azurerm_lb.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
+}
+
+# Create Metric Alert for Backend Pool Health
+resource "azurerm_monitor_metric_alert" "lb_backend_health" {
+  name                = "${var.load_balancer_name}-backend-health-alert"
+  resource_group_name = azurerm_resource_group.main.name
+  scopes              = [azurerm_lb.main.id]
+  description         = "Alert when Load Balancer backend pool health drops below 100%"
+
+  criteria {
+    metric_namespace = "Microsoft.Network/loadBalancers"
+    metric_name      = "DipAvailability"
+    aggregation      = "Average"
+    operator         = "LessThan"
+    threshold        = 100
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.main.id
+  }
+
+  tags = var.tags
+}
+
+# Create Action Group for Alerts
+resource "azurerm_monitor_action_group" "main" {
+  name                = "${var.resource_group_name}-action-group"
+  resource_group_name = azurerm_resource_group.main.name
+  short_name          = "alerts"
+
+  email_receiver {
+    name          = "admin"
+    email_address = "sagarkute@gmail.com"  # Replace with actual email
+  }
+
+  tags = var.tags
+}
+
+# Create Autoscale Setting for VMSS
+resource "azurerm_monitor_autoscale_setting" "main" {
+  name                = "${var.vmss_name}-autoscale"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  target_resource_id  = azurerm_linux_virtual_machine_scale_set.main.id
+
+  profile {
+    name = "defaultProfile"
+
+    capacity {
+      default = var.instance_count
+      minimum = 1
+      maximum = 4
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = azurerm_linux_virtual_machine_scale_set.main.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "GreaterThan"
+        threshold          = 50
+      }
+
+      scale_action {
+        direction = "Increase"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT5M"
+      }
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = azurerm_linux_virtual_machine_scale_set.main.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "LessThan"
+        threshold          = 50
+      }
+
+      scale_action {
+        direction = "Decrease"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT5M"
+      }
+    }
+  }
+
+  tags = var.tags
+}
